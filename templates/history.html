@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}History - Phishing URL Detector{% endblock %}
+{% block content %}
+<div class="container my-4">
+  <div class="card shadow-lg">
+    <div class="card-header bg-dark text-info">
+      <h3 class="mb-0">📜 Detection History</h3>
+    </div>
+    <div class="card-body p-0">
+      {% if rows %}
+      <div class="table-responsive">
+        <table class="table table-hover table-dark table-striped align-middle mb-0">
+          <!-- ✅ Use custom-header instead of Bootstrap text-dark -->
+          <thead class="custom-header">
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">URL</th>
+              <th scope="col">Verdict</th>
+              <th scope="col">Reason</th>
+              <th scope="col">Score</th>
+              <th scope="col">Detected At (UTC)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for id, url, verdict, reason, score, created_at in rows %}
+            <tr class="{{ verdict|lower }}">
+              <td>{{ id }}</td>
+              <td class="text-truncate url" style="max-width: 300px;">
+                <a href="{{ url }}" target="_blank" class="text-info text-decoration-none">{{ url }}</a>
+              </td>
+              <td>
+                {% if verdict.lower() == 'phishing' %}
+                  <span class="badge bg-danger">Phishing</span>
+                {% else %}
+                  <span class="badge bg-success">Safe</span>
+                {% endif %}
+              </td>
+              <td>{{ reason }}</td>
+              <td>{{ '%.4f'|format(score) if score is not none else 'N/A' }}</td>
+              <!-- ✅ Add timestamp class -->
+              <td class="timestamp">{{ created_at }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="alert alert-info m-3">No URLs have been analyzed yet.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
