@@ -1,0 +1,13 @@
+import csv
+
+INPUT_CSV = "top-1m.csv"
+OUTPUT_TXT = "top_domains.txt"
+
+with open(INPUT_CSV, "r") as csvfile, open(OUTPUT_TXT, "w") as txtfile:
+    reader = csv.reader(csvfile)
+    for row in reader:
+        domain = row[1].strip()
+        if domain:
+            txtfile.write(domain + "\n")
+
+print(f"Extracted domains to {OUTPUT_TXT}")
