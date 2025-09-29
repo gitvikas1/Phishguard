@@ -1,7 +1,37 @@
+# ------------------ Python ------------------
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+*.log
+
+# ------------------ Virtual Environment ------------------
 .venv/
-.env
+env/
+venv/
+ENV/
+
+# ------------------ IDE / Editor ------------------
 .vscode/
 .idea/
+*.sublime-project
+*.sublime-workspace
 
+# ------------------ OS / System Files ------------------
+.DS_Store
+Thumbs.db
+
+# ------------------ Secrets / Data ------------------
+*.env
+*.sqlite3
+*.db
+phishtank.csv
+
+# ------------------ Cache / Temp ------------------
+*.cache
+*.tmp
+*.bak
+*.swp

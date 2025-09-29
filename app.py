@@ -2,6 +2,7 @@ import os
 import re
 import difflib
 import csv
+import requests
 from urllib.parse import urlparse
 from flask import Flask, render_template, request, jsonify
 
@@ -23,15 +24,27 @@ migrate_csv_to_db()
 
 # ------------------ Load PhishTank CSV at startup ------------------
 PHISHTANK_FILE = "phishtank.csv"  
-print("[Startup] Loading PhishTank CSV for offline detection...")
+PHISHTANK_URL = "https://data.phishtank.com/data/online-valid.csv"  # Replace with the correct public CSV link
 PHISHTANK_URLS = set()
+
+if not os.path.exists(PHISHTANK_FILE):
+    print("[Startup] PhishTank CSV not found locally. Downloading...")
+    try:
+        r = requests.get(PHISHTANK_URL, timeout=30)
+        r.raise_for_status()
+        with open(PHISHTANK_FILE, "wb") as f:
+            f.write(r.content)
+        print(f"[Startup] Downloaded PhishTank CSV successfully ({len(r.content)} bytes).")
+    except Exception as e:
+        print(f"[Startup] ERROR: Failed to download PhishTank CSV: {e}")
+
+# Load CSV if exists
 if os.path.exists(PHISHTANK_FILE):
     with open(PHISHTANK_FILE, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
             url = row.get("url")
             if url:
-                # Normalize URL: lowercase, remove scheme, strip trailing slash
                 url = url.lower().strip()
                 if url.endswith("/"):
                     url = url[:-1]
@@ -42,7 +55,7 @@ if os.path.exists(PHISHTANK_FILE):
                 PHISHTANK_URLS.add(url)
     print(f"[Startup] Loaded {len(PHISHTANK_URLS)} URLs from PhishTank CSV.")
 else:
-    print(f"[Startup] WARNING: PhishTank CSV not found at {PHISHTANK_FILE}")
+    print(f"[Startup] WARNING: PhishTank CSV still not found!")
 
 # ------------------ URL Validation ------------------
 def normalize_url(url: str) -> str:
@@ -51,7 +64,6 @@ def normalize_url(url: str) -> str:
     return url
 
 def normalize_phishtank_url(url: str) -> str:
-    """Normalize input URL for PhishTank match (remove scheme, lowercase, trailing slash)."""
     url = url.lower().strip()
     if url.endswith("/"):
         url = url[:-1]
@@ -103,36 +115,23 @@ def enhanced_heuristic(url: str, feats: dict) -> float:
     hostname = urlparse(url).hostname or ""
     tld = hostname.split('.')[-1].lower() if hostname else ""
 
-    # 1️⃣ Suspicious TLD
     if tld in SUSPICIOUS_TLDS:
         score += 0.2
-
-    # 2️⃣ Suspicious keywords in hostname
     for kw in SUSPICIOUS_KEYWORDS:
         if kw in hostname.lower():
             score += 0.15
-
-    # 3️⃣ HTTP instead of HTTPS
     if urlparse(url).scheme == "http":
         score += 0.1
-
-    # 4️⃣ Hyphen and digit checks
     if hostname.count("-") >= 2:
         score += 0.1
     if re.search(r"\d", hostname):
         score += 0.05
-
-    # 5️⃣ Random-like domain (long SLD, letters/numbers only)
     sld = hostname.split(".")[0]
     if len(sld) >= 15 and re.fullmatch(r"[a-z0-9]+", sld):
         score += 0.15
-
-    # 6️⃣ Subdomain depth (more than 3 subdomains is suspicious)
     subdomains = hostname.split(".")[:-2]
     if len(subdomains) >= 3:
         score += 0.05
-
-    # 7️⃣ Existing extracted features
     score += (
         feats.get("tld_suspicious", 0) +
         feats.get("ip_in_domain", 0) +
@@ -183,7 +182,7 @@ def analyze():
             "reason": reason,
             "score": score,
             "features": {},
-            "message": "Phishing URL Detected (found in PhishTank CSV:-PhishTank CSV is a list of verified phishing URLs in CSV format provided by PhishTank website.)"
+            "message": "Phishing URL Detected [found in PhishTank CSV:-(Phishing.csv is a structured file of known phishing URLs that can be used to train or test phishing detection systems.)]"
         })
 
     # ------------------ 2️⃣ Whitelist + Typosquat ------------------
